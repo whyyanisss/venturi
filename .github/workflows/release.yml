@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Vérifier que le tag correspond à la version
+        run: |
+          V=$(node -p "require('./package.json').version")
+          [ "v$V" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME ≠ package.json v$V"; exit 1; }
+      - name: Installer Icarus Verilog
+        run: sudo apt-get update && sudo apt-get install -y iverilog
+      - run: npm test
+      - run: npm run package
+      - name: Publier la release GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "*.vsix"
+          generate_release_notes: true
+      - name: Publier sur le Marketplace (si VSCE_PAT est défini)
+        if: env.VSCE_PAT != ''
+        run: npx --yes @vscode/vsce publish --packagePath *.vsix -p "$VSCE_PAT"

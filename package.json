@@ -1,6 +1,6 @@
 {
   "name": "venturi",
-  "displayName": "Venturi — Schéma bloc vers Verilog",
+  "displayName": "venturi",
   "description": "Éditeur de schémas blocs qui génère du Verilog, avec compilation, simulation Icarus Verilog et GTKWave intégrés.",
   "version": "0.2.0",
   "publisher": "local",

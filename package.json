@@ -12,12 +12,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/OWNER/venturi.git"
+    "url": "https://github.com/whyyanisss/venturi.git"
   },
   "bugs": {
-    "url": "https://github.com/OWNER/venturi/issues"
+    "url": "https://github.com/whyyanisss/venturi/issues"
   },
-  "homepage": "https://github.com/OWNER/venturi#readme",
+  "homepage": "https://github.com/whyyanisss/venturi#readme",
   "engines": {
     "vscode": "^1.85.0"
   },

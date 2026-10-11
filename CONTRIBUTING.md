@@ -5,7 +5,7 @@ Merci de ton intérêt ! Les issues et pull requests sont les bienvenues.
 ## Mise en place
 
 ```bash
-git clone https://github.com/OWNER/venturi.git
+git clone https://github.com/whyyanisss/venturi.git
 cd venturi
 sudo apt install iverilog gtkwave   # pour les tests d'intégration
 npm test

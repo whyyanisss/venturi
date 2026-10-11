@@ -1,7 +1,5 @@
-# Venturi — schéma bloc → Verilog
+# Venturi, schéma bloc → Verilog
 
-[![CI](https://github.com/OWNER/venturi/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/venturi/actions/workflows/ci.yml)
-[![Licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 
 Dessine ton circuit sous forme de **schéma bloc** (registres, additionneurs, multiplexeurs, blocs
 personnalisés, entrées/sorties), et Venturi **génère le Verilog**, le **compile avec Icarus Verilog**, le

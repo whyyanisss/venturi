@@ -1,0 +1,37 @@
+:root{--bg:#000;--line:#262626;--fg:#e8e8e8;--mut:#6b6b6b;--wire:#3ddc97;--sel:#ffd24a}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.45 "Cascadia Code",Consolas,"DejaVu Sans Mono",monospace;overflow:hidden}
+button,input,select{font:inherit;color:var(--fg);background:#000;border:1px solid #333;border-radius:3px;padding:2px 7px}
+button{cursor:pointer}button:hover{background:#161616}
+:focus-visible{outline:1px solid #fff}
+button.p{background:#fff;border-color:#fff;color:#000;font-weight:700}button.p:hover{background:#ddd}
+button.x{color:#ff7b72}
+[hidden]{display:none!important}
+#stage{position:fixed;inset:0}
+#cvw{position:absolute;inset:0;overflow:auto;background:radial-gradient(#1c1c1c 1px,transparent 1px) 0 0/20px 20px}
+#cv{width:3000px;height:2000px;display:block;touch-action:none}
+.ov{position:absolute;background:#000;border:1px solid #2a2a2a;border-radius:4px;padding:8px}
+#tools{left:14px;top:14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;max-width:calc(100% - 330px)}
+#tools .sep{width:1px;align-self:stretch;background:#333;margin:0 2px}
+#tools .inl{display:flex;gap:5px;align-items:center;color:var(--mut)}
+#tools #top{width:100px}
+#hint{left:14px;bottom:12px;color:var(--mut);background:none;border:0;padding:0}
+#hint.err{color:#ff7b72}
+#props{right:14px;top:14px;width:290px;max-height:calc(100% - 28px);overflow:auto}
+#props label{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:5px}
+#props label input,#props label select{width:160px}
+#props input[type=color]{height:24px;padding:0}
+.ph{color:var(--mut);margin:8px 0 5px}
+.pr{display:flex;gap:4px;margin-bottom:4px}
+.pr input[type=text]{width:68px}.pr input[type=number]{width:48px}.pr select{width:auto;padding:2px}
+svg text{fill:var(--fg);font-size:11px;pointer-events:none}
+svg tspan.w{font-size:9px;fill-opacity:.65}
+svg .t{font-size:12px;font-weight:700}svg .m{font-size:10px;fill-opacity:.75}
+.bx.on{stroke:#fff;stroke-width:2}
+.pv{fill:#fff;stroke:#000;stroke-width:1.5;pointer-events:none}.pv.r{fill:#8a8a8a}
+.ph2{fill:transparent;cursor:crosshair}
+.hit{stroke:transparent;stroke-width:14;fill:none;cursor:pointer}
+.wire{stroke:#fff;stroke-width:1.8;fill:none;pointer-events:none}.wire.on{stroke:var(--sel)}
+.tmp{stroke:#fff;stroke-width:1.8;stroke-dasharray:5 4;fill:none;pointer-events:none}
+.ring{fill:none;stroke:var(--sel);stroke-width:2;pointer-events:none}

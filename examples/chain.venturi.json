@@ -1,0 +1,131 @@
+{
+ "version": 1,
+ "topName": "chain",
+ "rstLow": true,
+ "blocks": [
+  {
+   "inst": "din",
+   "mod": "",
+   "kind": "in",
+   "x": 20,
+   "y": 168,
+   "color": "",
+   "ports": [
+    {
+     "name": "p",
+     "dir": "out",
+     "width": 8,
+     "role": "",
+     "side": ""
+    }
+   ]
+  },
+  {
+   "inst": "r1",
+   "mod": "reg8",
+   "kind": "register",
+   "x": 160,
+   "y": 120,
+   "color": "",
+   "ports": [
+    {
+     "name": "clk",
+     "dir": "in",
+     "width": 1,
+     "role": "clk",
+     "side": ""
+    },
+    {
+     "name": "rst",
+     "dir": "in",
+     "width": 1,
+     "role": "rst",
+     "side": ""
+    },
+    {
+     "name": "d",
+     "dir": "in",
+     "width": 8,
+     "role": "",
+     "side": ""
+    },
+    {
+     "name": "q",
+     "dir": "out",
+     "width": 8,
+     "role": "",
+     "side": ""
+    }
+   ]
+  },
+  {
+   "inst": "r2",
+   "mod": "reg8",
+   "kind": "register",
+   "x": 440,
+   "y": 120,
+   "color": "",
+   "ports": [
+    {
+     "name": "clk",
+     "dir": "in",
+     "width": 1,
+     "role": "clk",
+     "side": ""
+    },
+    {
+     "name": "rst",
+     "dir": "in",
+     "width": 1,
+     "role": "rst",
+     "side": ""
+    },
+    {
+     "name": "d",
+     "dir": "in",
+     "width": 8,
+     "role": "",
+     "side": ""
+    },
+    {
+     "name": "q",
+     "dir": "out",
+     "width": 8,
+     "role": "",
+     "side": ""
+    }
+   ]
+  },
+  {
+   "inst": "dout",
+   "mod": "",
+   "kind": "out",
+   "x": 620,
+   "y": 168,
+   "color": "",
+   "ports": [
+    {
+     "name": "p",
+     "dir": "in",
+     "width": 8,
+     "role": "",
+     "side": ""
+    }
+   ]
+  }
+ ],
+ "links": [
+  {
+   "from": "din.p",
+   "to": "r1.d"
+  },
+  {
+   "from": "r1.q",
+   "to": "r2.d"
+  },
+  {
+   "from": "r2.q",
+   "to": "dout.p"
+  }
+ ]
+}

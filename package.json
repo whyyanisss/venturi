@@ -1,0 +1,220 @@
+{
+  "name": "venturi",
+  "displayName": "Venturi — Schéma bloc vers Verilog",
+  "description": "Éditeur de schémas blocs qui génère du Verilog, avec compilation, simulation Icarus Verilog et GTKWave intégrés.",
+  "version": "0.2.0",
+  "publisher": "local",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#0b1220",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OWNER/venturi.git"
+  },
+  "bugs": {
+    "url": "https://github.com/OWNER/venturi/issues"
+  },
+  "homepage": "https://github.com/OWNER/venturi#readme",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "verilog",
+    "icarus",
+    "iverilog",
+    "gtkwave",
+    "fpga",
+    "schematic",
+    "block diagram",
+    "hdl",
+    "simulation"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "package": "npx --yes @vscode/vsce package"
+  },
+  "capabilities": {
+    "virtualWorkspaces": false,
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Venturi lance iverilog, vvp et gtkwave."
+    }
+  },
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "venturi.editor",
+        "displayName": "Venturi Schéma",
+        "selector": [
+          {
+            "filenamePattern": "*.venturi.json"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "commands": [
+      {
+        "command": "venturi.new",
+        "category": "Venturi",
+        "title": "Nouveau schéma"
+      },
+      {
+        "command": "venturi.generate",
+        "category": "Venturi",
+        "title": "Générer le Verilog",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "venturi.compile",
+        "category": "Venturi",
+        "title": "Compiler (iverilog)",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "venturi.simulate",
+        "category": "Venturi",
+        "title": "Simuler (vvp)",
+        "icon": "$(play)"
+      },
+      {
+        "command": "venturi.wave",
+        "category": "Venturi",
+        "title": "Ouvrir les ondes (GTKWave)",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "venturi.testbench",
+        "category": "Venturi",
+        "title": "Créer un testbench"
+      },
+      {
+        "command": "venturi.viewJson",
+        "category": "Venturi",
+        "title": "Voir le JSON du schéma"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "venturi.simulate",
+          "when": "activeCustomEditorId == 'venturi.editor' || resourceExtname == '.v' || resourceExtname == '.sv'",
+          "group": "navigation@1"
+        },
+        {
+          "command": "venturi.compile",
+          "when": "activeCustomEditorId == 'venturi.editor' || resourceExtname == '.v' || resourceExtname == '.sv'",
+          "group": "navigation@2"
+        },
+        {
+          "command": "venturi.wave",
+          "when": "activeCustomEditorId == 'venturi.editor' || resourceExtname == '.v' || resourceExtname == '.sv'",
+          "group": "navigation@3"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "venturi.new",
+          "when": "explorerResourceIsFolder",
+          "group": "2_workspace"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "venturi.viewJson",
+          "when": "activeCustomEditorId == 'venturi.editor'"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Venturi",
+      "properties": {
+        "venturi.rtlDir": {
+          "type": "string",
+          "default": "rtl",
+          "description": "Dossier (relatif à l'espace de travail) où écrire le Verilog généré."
+        },
+        "venturi.tbDir": {
+          "type": "string",
+          "default": "tb",
+          "description": "Dossier des testbenches."
+        },
+        "venturi.buildDir": {
+          "type": "string",
+          "default": "build",
+          "description": "Dossier de sortie (.vvp, .vcd)."
+        },
+        "venturi.generateOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Régénère le Verilog quand le schéma est sauvegardé."
+        },
+        "venturi.compileOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Lance iverilog (diagnostics dans l'onglet Problèmes) à la sauvegarde d'un schéma ou d'un .v de rtl/ ou tb/."
+        },
+        "venturi.simTop": {
+          "type": "string",
+          "default": "",
+          "description": "Module à simuler (option -s). Vide : détecté automatiquement (tb_<top>, <top>_tb, tb…)."
+        },
+        "venturi.simTimeoutSec": {
+          "type": "number",
+          "default": 60,
+          "description": "Temps max d'une simulation avant arrêt (secondes)."
+        },
+        "venturi.iverilog.path": {
+          "type": "string",
+          "default": "iverilog",
+          "description": "Commande iverilog.",
+          "scope": "machine"
+        },
+        "venturi.iverilog.args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "-g2012"
+          ],
+          "description": "Arguments supplémentaires pour iverilog (ex. -Wall).",
+          "scope": "machine"
+        },
+        "venturi.vvp.path": {
+          "type": "string",
+          "default": "vvp",
+          "description": "Commande vvp.",
+          "scope": "machine"
+        },
+        "venturi.vvp.args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Arguments supplémentaires pour vvp.",
+          "scope": "machine"
+        },
+        "venturi.gtkwave.path": {
+          "type": "string",
+          "default": "gtkwave",
+          "description": "Commande gtkwave.",
+          "scope": "machine"
+        }
+      }
+    }
+  }
+}

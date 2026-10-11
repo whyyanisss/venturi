@@ -37,7 +37,7 @@ l'extension s'exécute côté WSL et appelle directement `iverilog`, `vvp` et `g
 
 ### Extension
 
-Télécharge le fichier `.vsix` depuis les [Releases](https://github.com/OWNER/venturi/releases), puis :
+Télécharge le fichier `.vsix` depuis les [Releases](https://github.com/whyyanisss/venturi/releases), puis :
 
 ```bash
 code --install-extension venturi-0.2.0.vsix

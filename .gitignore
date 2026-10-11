@@ -1,0 +1,8 @@
+node_modules/
+*.vsix
+build/
+*.vvp
+*.vcd
+*.bak
+.DS_Store
+Thumbs.db

@@ -1,0 +1,11 @@
+.github/**
+.vscode/**
+test/**
+examples/**
+CONTRIBUTING.md
+SECURITY.md
+.gitignore
+.gitattributes
+.editorconfig
+**/*.vsix
+**/*.bak

@@ -19,7 +19,7 @@ jobs:
         run: npm test
       - name: Construire le .vsix
         run: npm run package
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: venturi-vsix
           path: "*.vsix"

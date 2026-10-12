@@ -1,0 +1,25 @@
+{
+  "env": {
+    "node": true,
+    "es2020": true
+  },
+  "extends": "eslint:recommended",
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-var": "error",
+    "prefer-const": "error",
+    "no-unused-vars": "warn",
+    "no-console": "warn",
+    "require-await": "error",
+    "no-empty": "warn",
+    "eqeqeq": "warn",
+    "curly": "error",
+    "quotes": ["error", "single"],
+    "semi": ["error", "always"],
+    "comma-dangle": ["error", "always-multiline"]
+  },
+  "ignorePatterns": ["media/**", "node_modules/**"]
+}

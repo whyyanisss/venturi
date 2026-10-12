@@ -3,12 +3,15 @@ const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
 const cp = require('child_process');
+const crypto = require('crypto');
 const { cfg, dirs } = require('./project');
+const { emit, EVENT_TYPES } = require('./events');
 
 const { out } = require('./log');
 const diag = vscode.languages.createDiagnosticCollection('iverilog');
 let busy = false;
 
+const CACHE_FILE = '.venturi_cache.json';
 const INSTALL_HINT = 'Dans WSL : sudo apt install iverilog gtkwave';
 
 /* ---------- Utilitaires ---------- */
@@ -22,6 +25,46 @@ async function walk(dir, acc = []) {
     else if (/\.s?v$/.test(e.name)) acc.push(f);
   }
   return acc.sort();
+}
+
+/**
+ * Calcule un hash pour une liste de fichiers.
+ * @param {string[]} files - Liste des chemins de fichiers.
+ * @returns {Promise<string>} Hash SHA-1 des contenus concaténés.
+ */
+async function computeFilesHash(files) {
+  const contents = await Promise.all(
+    files.map(f => fs.promises.readFile(f, 'utf8').catch(() => ''))
+  );
+  return crypto.createHash('sha1').update(contents.join('')).digest('hex').slice(0, 16);
+}
+
+/**
+ * Charge le cache de compilation depuis le dossier build.
+ * @param {string} buildDir - Chemin du dossier build.
+ * @returns {Promise<{hash: string, simTop: string, vvp: string}|null>}
+ */
+async function loadCache(buildDir) {
+  const cachePath = path.join(buildDir, CACHE_FILE);
+  try {
+    const cache = JSON.parse(await fs.promises.readFile(cachePath, 'utf8'));
+    return { hash: cache.hash, simTop: cache.simTop, vvp: cache.vvp };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sauvegarde le cache de compilation.
+ * @param {string} buildDir - Chemin du dossier build.
+ * @param {string} hash - Hash des fichiers.
+ * @param {string} simTop - Module top simulé.
+ * @param {string} vvp - Chemin du fichier .vvp.
+ */
+async function saveCache(buildDir, hash, simTop, vvp) {
+  const cachePath = path.join(buildDir, CACHE_FILE);
+  await fs.promises.mkdir(buildDir, { recursive: true });
+  await fs.promises.writeFile(cachePath, JSON.stringify({ hash, simTop, vvp }));
 }
 
 function run(cmd, args, cwd, { onData, timeout } = {}) {
@@ -38,7 +81,7 @@ function run(cmd, args, cwd, { onData, timeout } = {}) {
 
 function toolMissing(r, name) {
   if (r.error && r.error.code === 'ENOENT') {
-    vscode.window.showErrorMessage(`« ${name} » est introuvable. ${INSTALL_HINT} (ou règle venturi.${name}.path).`);
+    vscode.window.showErrorMessage(`\u00ab ${name} \u00bb est introuvable. ${INSTALL_HINT} (ou règle venturi.${name}.path).`);
     return true;
   }
   return false;
@@ -87,58 +130,124 @@ function publishDiagnostics(text, root) {
 /* ---------- Compilation ---------- */
 
 /** @returns {Promise<{ok:boolean, vvp?:string, simTop?:string|null}>} */
-async function compile(p, { quiet = false } = {}) {
+async function compile(p, { quiet = false, force = false } = {}) {
   if (busy) {
     if (!quiet) vscode.window.setStatusBarMessage('$(sync~spin) Venturi : une compilation est déjà en cours…', 3000);
+    emit(EVENT_TYPES.COMPILATION_ERROR, { error: 'Compilation already in progress' });
     return { ok: false };
   }
   busy = true;
+  emit(EVENT_TYPES.COMPILATION_START, { root: p.root });
+  
   try {
     const c = cfg(), d = dirs(p.root);
     const rtl = await walk(d.rtl), tb = await walk(d.tb);
     const files = [...rtl, ...tb];
     if (!files.length) {
       if (!quiet) vscode.window.showWarningMessage('Aucun fichier .v dans rtl/ ou tb/. Sauvegarde le schéma pour générer le Verilog.');
+      emit(EVENT_TYPES.COMPILATION_ERROR, { error: 'No Verilog files found' });
       return { ok: false };
     }
     const simTop = await pickSimTop(p, tb, rtl);
     await fs.promises.mkdir(d.build, { recursive: true });
     const vvp = path.join(d.build, `${simTop || p.top || 'a'}.vvp`);
-    const cmd = c.get('iverilog.path', 'iverilog');
     const args = [...c.get('iverilog.args', ['-g2012']), '-o', vvp, ...(simTop ? ['-s', simTop] : []), ...files.map(f => path.relative(p.root, f))];
 
+    // Vérifier le cache de compilation
+    if (!force) {
+      const currentHash = await computeFilesHash(files);
+      const cached = await loadCache(d.build);
+      if (cached && cached.hash === currentHash && fs.existsSync(cached.vvp)) {
+        if (!quiet) vscode.window.setStatusBarMessage('$(check) iverilog : déjà à jour', 2000);
+        emit(EVENT_TYPES.COMPILATION_SUCCESS, { vvp: cached.vvp, simTop: cached.simTop });
+        return { ok: true, vvp: cached.vvp, simTop: cached.simTop };
+      }
+    }
+
+    const cmd = c.get('iverilog.path', 'iverilog');
     out.appendLine(`\n$ ${cmd} ${args.join(' ')}`);
     const r = await run(cmd, args, p.root);
-    if (toolMissing(r, 'iverilog')) return { ok: false };
+    if (toolMissing(r, 'iverilog')) {
+      emit(EVENT_TYPES.COMPILATION_ERROR, { error: 'iverilog not found' });
+      return { ok: false };
+    }
     const text = r.stderr + r.stdout;
     if (text.trim()) out.appendLine(text.trimEnd());
     const errors = publishDiagnostics(text, p.root);
 
     if (r.code === 0) {
+      // Sauvegarder le cache
+      const currentHash = await computeFilesHash(files);
+      await saveCache(d.build, currentHash, simTop, vvp);
       vscode.window.setStatusBarMessage('$(check) iverilog : compilation OK', 4000);
+      emit(EVENT_TYPES.COMPILATION_SUCCESS, { vvp, simTop });
       return { ok: true, vvp, simTop };
     }
     vscode.window.setStatusBarMessage(`$(error) iverilog : ${errors || 'des'} erreur(s)`, 6000);
+    emit(EVENT_TYPES.COMPILATION_ERROR, { errors, text });
     if (!quiet) out.show(true);
     return { ok: false };
-  } finally { busy = false; }
+  } finally { 
+    busy = false; 
+    emit(EVENT_TYPES.COMPILATION_ERROR, { status: 'finished' });
+  }
 }
 
 /* ---------- Simulation ---------- */
 
 async function simulate(p) {
-  const r = await compile(p);
-  if (!r.ok) return;
+  emit(EVENT_TYPES.SIMULATION_START, { root: p.root });
+  const r = await compile(p, { force: true });
+  if (!r.ok) {
+    emit(EVENT_TYPES.SIMULATION_ERROR, { error: 'Compilation failed' });
+    return;
+  }
   const c = cfg(), cmd = c.get('vvp.path', 'vvp');
   const args = [...c.get('vvp.args', []), path.relative(p.root, r.vvp)];
   out.show(true);
   out.appendLine(`\n$ ${cmd} ${args.join(' ')}`);
-  await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: `vvp ${r.simTop || ''}` }, async () => {
-    const res = await run(cmd, args, p.root, { onData: s => out.append(s), timeout: c.get('simTimeoutSec', 60) });
-    if (toolMissing(res, 'vvp')) return;
-    if (res.timedOut) vscode.window.showWarningMessage(`Simulation interrompue après ${c.get('simTimeoutSec', 60)} s (il manque peut-être un $finish).`);
-    else if (res.code !== 0) vscode.window.showErrorMessage('vvp a échoué : voir la sortie « Venturi ».');
-    else vscode.window.setStatusBarMessage('$(check) Simulation terminée', 4000);
+  
+  const timeout = c.get('simTimeoutSec', 60);
+  await vscode.window.withProgress({ 
+    location: vscode.ProgressLocation.Window, 
+    title: `vvp ${r.simTop || ''}`,
+    cancellable: true 
+  }, async (progress, token) => {
+    const controller = new AbortController();
+    
+    // Annuler si l'utilisateur clique sur "Annuler"
+    token.onCancellationRequested(() => {
+      controller.abort();
+    });
+    
+    const res = await run(cmd, args, p.root, { 
+      onData: s => out.append(s), 
+      timeout: timeout 
+    });
+    
+    if (token.isCancellationRequested) {
+      vscode.window.showWarningMessage('Simulation annulée par l\'utilisateur.');
+      emit(EVENT_TYPES.SIMULATION_ERROR, { error: 'User cancelled' });
+      return;
+    }
+    
+    if (toolMissing(res, 'vvp')) {
+      emit(EVENT_TYPES.SIMULATION_ERROR, { error: 'vvp not found' });
+      return;
+    }
+    if (res.timedOut) {
+      vscode.window.showWarningMessage(
+        `Simulation interrompue après ${timeout} secondes. ` +
+        `Augmentez "venturi.simTimeoutSec" dans les paramètres ou ajoutez un $finish dans votre testbench.`
+      );
+      emit(EVENT_TYPES.SIMULATION_ERROR, { error: 'Timeout' });
+    } else if (res.code !== 0) {
+      vscode.window.showErrorMessage('vvp a échoué : voir la sortie « Venturi ».');
+      emit(EVENT_TYPES.SIMULATION_ERROR, { error: 'vvp failed', code: res.code });
+    } else {
+      vscode.window.setStatusBarMessage('$(check) Simulation terminée', 4000);
+      emit(EVENT_TYPES.SIMULATION_SUCCESS, { simTop: r.simTop });
+    }
   });
 }
 
@@ -159,7 +268,7 @@ async function wave(p) {
   const cmd = cfg().get('gtkwave.path', 'gtkwave');
   const child = cp.spawn(cmd, [vcds[0].f], { cwd: p.root, detached: true, stdio: 'ignore' });
   child.on('error', e => vscode.window.showErrorMessage(
-    e.code === 'ENOENT' ? `« gtkwave » est introuvable. ${INSTALL_HINT}` : `GTKWave : ${e.message}`));
+    e.code === 'ENOENT' ? `\u00ab gtkwave \u00bb est introuvable. ${INSTALL_HINT}` : `GTKWave : ${e.message}`));
   child.unref();
 }
 

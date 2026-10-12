@@ -5,6 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { generate, testbench, validate, idOf } = require('./gen');
 const { out } = require('./log');
+const { emit, EVENT_TYPES } = require('./events');
 
 const VIEW_TYPE = 'venturi.editor';
 const FORMAT_VERSION = 1;
@@ -17,7 +18,15 @@ function parseModel(text) {
   try {
     const j = JSON.parse(text);
     if (j && Array.isArray(j.blocks) && Array.isArray(j.links)) {
-      return { version: j.version ?? FORMAT_VERSION, topName: j.topName ?? 'top', rstLow: j.rstLow !== false, blocks: j.blocks, links: j.links };
+      return { 
+        version: j.version ?? FORMAT_VERSION, 
+        topName: j.topName ?? 'top', 
+        rstLow: j.rstLow !== false, 
+        blocks: j.blocks,
+        links: j.links,
+        parameters: j.parameters ?? {},
+        testbench: j.testbench ?? {}
+      };
     }
   } catch { /* JSON invalide */ }
   return null;
@@ -59,6 +68,8 @@ function rootOf(uri) {
  * @returns {Promise<{uri:vscode.Uri, root:string, top:string|null, text:string}|null>}
  */
 async function resolveProject(arg, silent = false) {
+  emit(EVENT_TYPES.PROJECT_RESOLVED, { status: 'start' });
+  
   let uri = (arg instanceof vscode.Uri && arg.fsPath.endsWith('.venturi.json')) ? arg : (activeSchematicUri() || lastUri);
   if (!uri) {
     const found = await vscode.workspace.findFiles('**/*.venturi.json', '**/node_modules/**', 20);
@@ -71,12 +82,20 @@ async function resolveProject(arg, silent = false) {
   }
   if (!uri) {
     if (!silent) vscode.window.showWarningMessage('Aucun schéma .venturi.json trouvé. Utilise « Venturi : Nouveau schéma ».');
+    emit(EVENT_TYPES.PROJECT_ERROR, { error: 'No schematic found' });
     return null;
   }
   let text;
   try { text = (await vscode.workspace.openTextDocument(uri)).getText(); } catch { lastUri = null; return null; }
   const m = parseModel(text);
   lastUri = uri;
+  
+  emit(EVENT_TYPES.PROJECT_RESOLVED, { 
+    status: 'success', 
+    uri: uri.toString(),
+    top: m ? (idOf(m.topName) || 'top') : null
+  });
+  
   return { uri, root: rootOf(uri), top: m ? (idOf(m.topName) || 'top') : null, text };
 }
 
@@ -136,13 +155,29 @@ function reportIssues(p, issues) {
  * @returns {Promise<{dir:string, top:string, topFile:string, written:string[]}|null>}
  */
 async function generateFor(p, { notify = false } = {}) {
+  emit(EVENT_TYPES.GENERATION_START, { uri: p.uri.toString() });
+  
   const model = parseModel(p.text);
-  if (!model) { vscode.window.showErrorMessage('Venturi : le schéma .venturi.json est invalide.'); return null; }
-  if (!reportIssues(p, validate(model))) return null;
-  let g;
-  try { g = generate(model); } catch (e) {
-    vscode.window.showErrorMessage('Venturi : génération impossible (' + e.message + ').'); return null;
+  if (!model) { 
+    emit(EVENT_TYPES.GENERATION_ERROR, { error: 'Invalid schema JSON' });
+    vscode.window.showErrorMessage('Venturi : le schéma .venturi.json est invalide.'); 
+    return null; 
   }
+  
+  if (!reportIssues(p, validate(model))) {
+    emit(EVENT_TYPES.GENERATION_ERROR, { error: 'Validation failed' });
+    return null;
+  }
+  
+  let g;
+  try { 
+    g = generate(model); 
+  } catch (e) {
+    emit(EVENT_TYPES.GENERATION_ERROR, { error: e.message });
+    vscode.window.showErrorMessage('Venturi : génération impossible (' + e.message + ').'); 
+    return null; 
+  }
+  
   const { rtl } = dirs(p.root);
   await fs.promises.mkdir(rtl, { recursive: true });
 
@@ -181,6 +216,14 @@ async function generateFor(p, { notify = false } = {}) {
       ? `$(check) Venturi : ${written.join(', ')}`
       : '$(check) Venturi : Verilog déjà à jour', 4000);
   }
+  
+  emit(EVENT_TYPES.GENERATION_SUCCESS, { 
+    dir: rtl, 
+    top: g.top, 
+    topFile: g.topFile, 
+    written 
+  });
+  
   return { dir: rtl, top: g.top, topFile: g.topFile, written };
 }
 
@@ -215,10 +258,17 @@ async function createTestbench(p) {
 async function newSchematic(arg) {
   const wf = (arg instanceof vscode.Uri && vscode.workspace.getWorkspaceFolder(arg)) || (vscode.workspace.workspaceFolders || [])[0];
   if (!wf) { vscode.window.showErrorMessage('Ouvre d\'abord un dossier (code . depuis WSL).'); return; }
-  const name = await vscode.window.showInputBox({ prompt: 'Nom du module top', value: 'chain', validateInput: v => /^\w+$/.test(v) ? null : 'Lettres, chiffres et _ uniquement' });
+  const name = await vscode.window.showInputBox({ 
+    prompt: 'Nom du module top', 
+    value: 'chain', 
+    validateInput: v => /^\w+$/.test(v) ? null : 'Lettres, chiffres et _ uniquement' 
+  });
   if (!name) return;
   const dir = path.join(wf.uri.fsPath, 'schema'), file = path.join(dir, `${name}.venturi.json`);
-  if (await exists(file)) { vscode.window.showWarningMessage('Ce schéma existe déjà.'); return openSchematic(file); }
+  if (await exists(file)) { 
+    vscode.window.showWarningMessage('Ce schéma existe déjà.'); 
+    return openSchematic(file); 
+  }
   await fs.promises.mkdir(dir, { recursive: true });
   const text = JSON.stringify(defaultModel(name), null, 1);
   await fs.promises.writeFile(file, text);

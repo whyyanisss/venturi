@@ -40,10 +40,18 @@
     "workspace"
   ],
   "main": "./src/extension.js",
+  "devDependencies": {
+    "eslint": "^8.50.0",
+    "prettier": "^3.0.0"
+  },
   "activationEvents": [],
   "scripts": {
     "test": "node --test test/*.test.js",
-    "package": "npx --yes @vscode/vsce package"
+    "package": "npx --yes @vscode/vsce package",
+    "lint": "eslint src/**/*.js",
+    "lint:fix": "eslint src/**/*.js --fix",
+    "format": "prettier --write src/**/*.js",
+    "check-format": "prettier --check src/**/*.js"
   },
   "capabilities": {
     "virtualWorkspaces": false,

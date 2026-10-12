@@ -1,16 +1,18 @@
-:root{--bg:#000;--line:#262626;--fg:#e8e8e8;--mut:#6b6b6b;--wire:#3ddc97;--sel:#ffd24a}
-*{box-sizing:border-box}
+:root{--bg:#000;--line:#262626;--fg:#e8e8e8;--mut:#6b6b6b;--wire:#3ddc97;--sel:#ffd24a;--primary:#0064ff;--success:#22c55e;--warning:#facc15}
+*:box-sizing:border-box
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.45 "Cascadia Code",Consolas,"DejaVu Sans Mono",monospace;overflow:hidden}
 button,input,select{font:inherit;color:var(--fg);background:#000;border:1px solid #333;border-radius:3px;padding:2px 7px}
 button{cursor:pointer}button:hover{background:#161616}
+button:disabled{cursor:not-allowed;opacity:0.5}
 :focus-visible{outline:1px solid #fff}
 button.p{background:#fff;border-color:#fff;color:#000;font-weight:700}button.p:hover{background:#ddd}
 button.x{color:#ff7b72}
+button[disabled]{opacity:0.5;cursor:not-allowed}
 [hidden]{display:none!important}
 #stage{position:fixed;inset:0}
 #cvw{position:absolute;inset:0;overflow:auto;background:radial-gradient(#1c1c1c 1px,transparent 1px) 0 0/20px 20px}
-#cv{width:3000px;height:2000px;display:block;touch-action:none}
+#cv{width:3000px;height:2000px;display:block;touch-action:none;transform-origin:0 0}
 .ov{position:absolute;background:#000;border:1px solid #2a2a2a;border-radius:4px;padding:8px}
 #tools{left:14px;top:14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;max-width:calc(100% - 330px)}
 #tools .sep{width:1px;align-self:stretch;background:#333;margin:0 2px}
@@ -28,10 +30,126 @@ button.x{color:#ff7b72}
 svg text{fill:var(--fg);font-size:11px;pointer-events:none}
 svg tspan.w{font-size:9px;fill-opacity:.65}
 svg .t{font-size:12px;font-weight:700}svg .m{font-size:10px;fill-opacity:.75}
-.bx.on{stroke:#fff;stroke-width:2}
+.bx.on{stroke:var(--primary);stroke-width:2}
+.bx.on.selected{stroke:var(--sel);stroke-width:2}
 .pv{fill:#fff;stroke:#000;stroke-width:1.5;pointer-events:none}.pv.r{fill:#8a8a8a}
 .ph2{fill:transparent;cursor:crosshair}
 .hit{stroke:transparent;stroke-width:14;fill:none;cursor:pointer}
 .wire{stroke:#fff;stroke-width:1.8;fill:none;pointer-events:none}.wire.on{stroke:var(--sel)}
 .tmp{stroke:#fff;stroke-width:1.8;stroke-dasharray:5 4;fill:none;pointer-events:none}
 .ring{fill:none;stroke:var(--sel);stroke-width:2;pointer-events:none}
+
+/* Sélection multiple */
+.bx.selected{stroke:var(--primary);stroke-width:2;stroke-dasharray:5,3}
+
+/* Boîte de sélection */
+.selection-box{pointer-events:none}
+
+/* Zoom display */
+.zoom-display{margin-left:8px;color:var(--mut);font-size:12px;min-width:40px;text-align:center}
+
+/* Boutons de zoom */
+button[data-a="zoomIn"],button[data-a="zoomOut"],button[data-a="resetZoom"]{font-size:16px;padding:2px 8px}
+
+/* Style pour les blocs sélectionnés */
+.bx.selected .t,.bx.selected .m{fill:var(--primary)}
+
+/* Style pour le mode pan */
+#cvw.panning{cursor:grabbing}
+#cvw.panning *{cursor:grabbing}
+
+/* Amélioration des boutons */
+button[data-a="undo"],button[data-a="redo"]{font-family:monospace;font-size:14px}
+button[data-a="centerView"]{font-size:16px}
+
+/* Style pour les paramètres */
+#props .param-label{margin-top:8px;border-top:1px solid #333;padding-top:8px}
+
+/* Responsive pour les petits écrans */
+@media (max-width: 800px) {
+  #tools{max-width:calc(100% - 250px)}
+  #props{width:250px}
+}
+
+@media (max-width: 600px) {
+  #tools{max-width:calc(100% - 200px)}
+  #props{width:200px}
+}
+
+/* Animation pour les feedbacks */
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.bx.on { animation: pulse 1s ease-in-out; }
+
+/* Style pour les connexions temporaires */
+.tmp.valid{stroke:var(--success)}
+.tmp.invalid{stroke:#ff7b72}
+
+/* Amélioration de la lisibilité */
+button[data-a]:hover{filter:brightness(1.2)}
+button:active{transform:scale(0.95)}
+
+/* Style pour les infobulles */
+.ph2:hover circle{stroke:var(--primary);stroke-width:2}
+
+/* Style pour les ports */
+.ph2[data-pt]:hover{stroke:var(--primary)}
+
+/* Style pour les liens sélectionnés */
+.wire.on{stroke:var(--primary);stroke-width:2.5}
+
+/* Style pour le fond du canevas */
+#cvw{background:radial-gradient(#1c1c1c 1px,transparent 1px) 0 0/20px 20px, linear-gradient(to right, #111 1px, transparent 1px) 0 0/40px 40px, linear-gradient(to bottom, #111 1px, transparent 1px) 0 0/40px 40px}
+
+/* Style pour le mode sélection */
+#cvw.selecting{cursor:crosshair}
+
+/* Style pour les boutons désactivés */
+button:disabled{opacity:0.4;cursor:not-allowed}
+
+/* Style pour les boutons de zoom */
+button[data-a="zoomIn"]:hover,button[data-a="zoomOut"]:hover,button[data-a="resetZoom"]:hover{background:#161616}
+
+/* Style pour le bouton centerView */
+button[data-a="centerView"]{font-size:14px}
+
+/* Style pour les boutons undo/redo */
+button[data-a="undo"],button[data-a="redo"]{min-width:60px}
+
+/* Style pour le bouton selectAll */
+button[data-a="selectAll"]{min-width:50px}
+
+/* Style pour les nouveaux types de blocs */
+button[data-a="add:const"]{background:#7c3aed}
+button[data-a="add:slice"]{background:#0891b2}
+button[data-a="add:concat"]{background:#1e40af}
+button[data-a="add:and"]{background:#ea580c}
+button[data-a="add:or"]{background:#f59e0b}
+button[data-a="add:not"]{background:#374151}
+button[data-a="add:counter"]{background:#7c2d12}
+
+/* Style pour les boutons de bloc standard */
+button[data-a="add:register"]{background:#065b07}
+button[data-a="add:adder"]{background:#f97316}
+button[data-a="add:mux"]{background:#112f5f}
+button[data-a="add:custom"]{background:#a855f7}
+button[data-a="add:in"]{background:#0d9488}
+button[data-a="add:out"]{background:#db2777}
+
+/* Style pour les boutons de bloc */
+button[data-a^="add:"]{color:#fff;border:0;padding:4px 10px}
+button[data-a^="add:"]:hover{opacity:0.9}
+
+/* Style pour les boutons d'action */
+button[data-a="undo"],button[data-a="redo"],button[data-a="selectAll"],button[data-a="centerView"]{background:#333}
+button[data-a="zoomIn"],button[data-a="zoomOut"],button[data-a="resetZoom"]{background:#333}
+
+/* Style pour les boutons de zoom */
+button[data-a="zoomIn"]:hover,button[data-a="zoomOut"]:hover,button[data-a="resetZoom"]:hover{background:#444}
+
+/* Style pour les boutons undo/redo */
+button[data-a="undo"]:hover,button[data-a="redo"]:hover,button[data-a="selectAll"]:hover,button[data-a="centerView"]:hover{background:#444}

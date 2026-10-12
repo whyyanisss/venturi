@@ -95,7 +95,7 @@ Voir [`examples/chain.venturi.json`](examples/chain.venturi.json).
 ## Développement
 
 ```bash
-git clone https://github.com/OWNER/venturi.git
+git clone https://github.com/whyyanisss/venturi.git
 cd venturi
 code .        # puis F5 pour lancer l'extension dans une fenêtre de test
 npm test      # tests unitaires + simulation iverilog (ignorée si iverilog est absent)

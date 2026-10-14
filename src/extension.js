@@ -13,6 +13,7 @@ async function runFor(cmd, arg, msg = {}) {
     case 'generate': await P.generateFor(p, { notify: true }); break;
     case 'compile': await P.generateFor(p); await S.compile(p); break;
     case 'simulate': await P.generateFor(p); await S.simulate(p); break;
+    case 'simulateWave': await P.generateFor(p); await S.simulate(p, { wave: true }); break;
     case 'wave': await S.wave(p); break;
     case 'testbench': await P.createTestbench(p); break;
     case 'openTop': {
@@ -21,6 +22,11 @@ async function runFor(cmd, arg, msg = {}) {
       break;
     }
     case 'openModule': if (msg.mod) await P.openVerilog(p, msg.mod); break;
+    // actions du panneau « État du Verilog » (une ligne = un fichier)
+    case 'openFile': if (msg.file) await P.openFile(path.join(P.dirs(p.root).rtl, msg.file)); break;
+    case 'diff': if (msg.file) await P.diffFile(p, msg.file); break;
+    case 'update': if (msg.file) await P.generateFor(p, { notify: true, only: [msg.file] }); break;
+    case 'archive': if (msg.file) await P.archiveFile(p, msg.file); break;
   }
 }
 
@@ -28,7 +34,7 @@ async function runFor(cmd, arg, msg = {}) {
 async function onSave(doc) {
   const c = P.cfg();
   if (doc.fileName.endsWith('.venturi.json')) {
-    if (!c.get('generateOnSave', true)) return;
+    if (P.genMode(c) !== 'save') return;
     const p = await P.resolveProject(doc.uri, true);
     if (!p) return;
     const g = await P.generateFor(p, { notify: true });
@@ -45,7 +51,20 @@ async function onSave(doc) {
 function activate(context) {
   const hooks = {
     run: (cmd, uri, msg) => runFor(cmd, uri, msg),
-    setActive: uri => P.setLastUri(uri)
+    setActive: uri => P.setLastUri(uri),
+    status: async uri => { const p = await P.resolveProject(uri, true); return p ? P.verilogStatus(p) : null; }
+  };
+  // Mode « change » : le Verilog suit l'éditeur sans enregistrer (avec délai). Jamais de fenêtre : les fichiers
+  // modifiés à la main sont conservés et signalés dans la barre d'état.
+  const timers = new Map();
+  const onChange = e => {
+    const d = e.document;
+    if (!d.fileName.endsWith('.venturi.json') || !e.contentChanges.length || P.genMode() !== 'change') return;
+    clearTimeout(timers.get(d.uri.toString()));
+    timers.set(d.uri.toString(), setTimeout(async () => {
+      const p = await P.resolveProject(d.uri, true);
+      if (p) await P.generateFor(p, { auto: true });
+    }, 800));
   };
 
   const cmd = (id, fn) => vscode.commands.registerCommand(id, fn);
@@ -58,6 +77,7 @@ function activate(context) {
     cmd('venturi.generate', a => runFor('generate', a)),
     cmd('venturi.compile', a => runFor('compile', a)),
     cmd('venturi.simulate', a => runFor('simulate', a)),
+    cmd('venturi.simulateWave', a => runFor('simulateWave', a)),
     cmd('venturi.wave', a => runFor('wave', a)),
     cmd('venturi.testbench', a => runFor('testbench', a)),
     cmd('venturi.viewJson', async a => {
@@ -65,6 +85,7 @@ function activate(context) {
       if (u) vscode.commands.executeCommand('vscode.openWith', u, 'default');
     }),
     vscode.workspace.onDidSaveTextDocument(d => onSave(d).catch(e => console.error('[venturi]', e))),
+    vscode.workspace.onDidChangeTextDocument(e => onChange(e)),
     S.diag, S.out
   );
 }

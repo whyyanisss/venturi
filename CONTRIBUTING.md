@@ -32,6 +32,14 @@ Ouvre le dossier dans VS Code et appuie sur **F5** pour lancer l'extension dans 
 | `src/gen.js` | Génération Verilog, testbench, validation (logique pure) |
 | `src/sim.js` | `iverilog`, `vvp`, GTKWave, diagnostics |
 | `media/editor.js` / `.css` | Interface du canevas (webview) |
+| `src/html.js` | HTML de l'éditeur (pur : réutilisé tel quel par les tests DOM) |
+| `media/layout.js` | Grille de 20 px : positions des ports, hauteurs, redressement, guides (logique pure) |
+| `media/kinds.js` | Blocs prêts à l'emploi : ports, nom de module, symbole (logique pure) |
+| `test/dom.js` | Lance l'éditeur réel dans jsdom (`npm install` d'abord) |
+| `src/protect.js` | Protection des fichiers générés (empreinte, décision d'écraser, sauvegardes) : logique pure |
+| `media/pipeline.js` | Registres de pipeline, ligne de coupe, latence : logique pure, partagée entre la webview et les tests |
+| `media/group.js` | Sélection multiple : rectangle, alignement, répartition, copier-coller (logique pure) |
+| `media/wire.js` | Tracé des fils déplaçables (logique pure) |
 
 ## Pull requests
 

@@ -23,12 +23,19 @@ jobs:
           [ "v$V" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME ≠ package.json v$V"; exit 1; }
       - name: Installer Icarus Verilog
         run: sudo apt-get update && sudo apt-get install -y iverilog
+      - run: npm ci
       - run: npm test
       - run: npm run package
+      - name: Zip des sources
+        run: |
+          V=$(node -p "require('./package.json').version")
+          git archive --format=zip --prefix=venturi/ HEAD -o "venturi-$V-source.zip"
       - name: Publier la release GitHub
         uses: softprops/action-gh-release@v2
         with:
-          files: "*.vsix"
+          files: |
+            *.vsix
+            *-source.zip
           generate_release_notes: true
       - name: Publier sur le Marketplace (si VSCE_PAT est défini)
         if: env.VSCE_PAT != ''

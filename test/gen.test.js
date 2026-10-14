@@ -96,9 +96,15 @@ test('validate : instances en double (y compris après nettoyage)', () => {
   assert.ok(errors(m).some(e => /même nom d'instance/.test(e)));
 });
 
-test('validate : même module, ports différents', () => {
-  const m = chain({ blocks: [input('din'), reg('r1'), reg('r2', 0, 'reg8', 4), output('dout')] });
+test('validate : même module, ports différents (noms ou sens) → erreur', () => {
+  const m = chain();
+  m.blocks[2].ports[2].name = 'din';                             // r2.d renommé alors que r1 et r2 partagent « reg8 »
   assert.ok(errors(m).some(e => /ports différents/.test(e)));
+});
+
+test('validate : même module, largeurs différentes → OK (paramètre Verilog)', () => {
+  const m = chain({ blocks: [input('din'), reg('r1'), reg('r2', 0, 'reg8', 4), output('dout')] });
+  assert.deepEqual(errors(m), []);
 });
 
 test('validate : même module, mêmes ports → OK', () => {
@@ -144,4 +150,48 @@ test('validate : entrée non connectée → avertissement', () => {
 test('validate : lien vers un port supprimé → avertissement', () => {
   const m = chain({ links: [...chain().links, { from: 'r1.q', to: 'ghost.d' }] });
   assert.ok(warnings(m).some(w => /ignoré/.test(w)));
+});
+
+/* ---------- Modules paramétrés : la taille est un paramètre de l'instance ---------- */
+
+const widthModel = () => chain({
+  blocks: [input('din'), reg('r1'), reg('r2', 0, 'reg8', 16), output('dout')]
+});
+
+test('largeurs différentes sur un module partagé → un seul fichier, paramétré par WIDTH', () => {
+  const g = generate(widthModel());
+  assert.deepEqual(Object.keys(g.files).sort(), ['chain.v', 'reg8.v']);
+  const v = g.files['reg8.v'];
+  assert.match(v, /module reg8 #\(\n    parameter WIDTH = 8\n\) \(/);
+  assert.match(v, /input \[WIDTH-1:0\] d/);
+  assert.match(v, /output reg \[WIDTH-1:0\] q/);
+  assert.match(v, /input clk/);                                  // les ports de largeur fixe restent littéraux
+  assert.match(g.files['chain.v'], /reg8 #\(\.WIDTH\(8\)\) u_r1/);
+  assert.match(g.files['chain.v'], /reg8 #\(\.WIDTH\(16\)\) u_r2/);
+});
+
+test('mêmes largeurs partout → module non paramétré (sortie inchangée)', () => {
+  const g = generate(chain());
+  assert.doesNotMatch(g.files['reg8.v'], /parameter/);
+  assert.doesNotMatch(g.files['chain.v'], /#\(/);
+  assert.match(g.files['reg8.v'], /output reg \[7:0\] q/);
+});
+
+test('changer la taille d\'une seule instance change le fichier du module (jamais un nouveau module)', () => {
+  const a = generate(chain()), m = chain();
+  m.blocks[2].ports.forEach(p => { if (!p.role) p.width = 12; });
+  const b = generate(m);
+  assert.deepEqual(Object.keys(b.files).sort(), Object.keys(a.files).sort());
+  assert.notEqual(b.files['reg8.v'], a.files['reg8.v']);
+});
+
+test('plusieurs groupes de largeurs → un paramètre par groupe (W_<port>)', () => {
+  const add = (inst, w, ws) => { const x = adder(inst); x.ports[0].width = w; x.ports[1].width = w; x.ports[2].width = ws; return x; };
+  const m = { version: 1, topName: 'ad', rstLow: true, blocks: [add('a1', 8, 9), add('a2', 12, 13)], links: [] };
+  const g = generate(m);
+  assert.match(g.files['add8.v'], /parameter W_a = 8,\n    parameter W_s = 9/);
+  assert.match(g.files['add8.v'], /input \[W_a-1:0\] a/);
+  assert.match(g.files['add8.v'], /output \[W_s-1:0\] s/);
+  assert.match(g.files['ad.v'], /add8 #\(\.W_a\(8\), \.W_s\(9\)\) u_a1/);
+  assert.match(g.files['ad.v'], /add8 #\(\.W_a\(12\), \.W_s\(13\)\) u_a2/);
 });

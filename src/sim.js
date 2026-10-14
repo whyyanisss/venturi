@@ -126,33 +126,41 @@ async function compile(p, { quiet = false } = {}) {
 
 /* ---------- Simulation ---------- */
 
-async function simulate(p) {
+/** @param {{wave?:boolean}} [opt]  wave : ouvre GTKWave à la fin (sinon selon venturi.gtkwave.openAfterSimulate) */
+async function simulate(p, { wave: openWave = false } = {}) {
   const r = await compile(p);
   if (!r.ok) return;
+  const started = Date.now();
   const c = cfg(), cmd = c.get('vvp.path', 'vvp');
   const args = [...c.get('vvp.args', []), path.relative(p.root, r.vvp)];
   out.show(true);
   out.appendLine(`\n$ ${cmd} ${args.join(' ')}`);
-  await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: `vvp ${r.simTop || ''}` }, async () => {
+  const ok = await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: `vvp ${r.simTop || ''}` }, async () => {
     const res = await run(cmd, args, p.root, { onData: s => out.append(s), timeout: c.get('simTimeoutSec', 60) });
-    if (toolMissing(res, 'vvp')) return;
-    if (res.timedOut) vscode.window.showWarningMessage(`Simulation interrompue après ${c.get('simTimeoutSec', 60)} s (il manque peut-être un $finish).`);
-    else if (res.code !== 0) vscode.window.showErrorMessage('vvp a échoué : voir la sortie « Venturi ».');
-    else vscode.window.setStatusBarMessage('$(check) Simulation terminée', 4000);
+    if (toolMissing(res, 'vvp')) return false;
+    if (res.timedOut) { vscode.window.showWarningMessage(`Simulation interrompue après ${c.get('simTimeoutSec', 60)} s (il manque peut-être un $finish).`); return false; }
+    if (res.code !== 0) { vscode.window.showErrorMessage('vvp a échoué : voir la sortie « Venturi ».'); return false; }
+    vscode.window.setStatusBarMessage('$(check) Simulation terminée', 4000);
+    return true;
   });
+  if (ok && (openWave || c.get('gtkwave.openAfterSimulate', false))) await wave(p, { since: started - 2000 });
 }
 
 /* ---------- GTKWave ---------- */
 
-async function wave(p) {
+/** @param {{since?:number}} [opt]  since : ne considère que les .vcd écrits depuis cet instant (évite d'ouvrir d'anciennes ondes) */
+async function wave(p, { since } = {}) {
   const { build } = dirs(p.root);
   let vcds = [];
   try {
     const names = (await fs.promises.readdir(build)).filter(n => /\.(vcd|fst|lxt2?)$/.test(n));
     vcds = await Promise.all(names.map(async n => ({ f: path.join(build, n), t: (await fs.promises.stat(path.join(build, n))).mtimeMs })));
   } catch { /* pas de dossier build */ }
+  if (since) vcds = vcds.filter(v => v.t >= since);
   if (!vcds.length) {
-    vscode.window.showWarningMessage('Aucun fichier d\'ondes dans build/. Lance une simulation dont le testbench contient $dumpfile / $dumpvars.');
+    vscode.window.showWarningMessage(since
+      ? 'La simulation n\'a produit aucun fichier d\'ondes : ajoute $dumpfile / $dumpvars au testbench (« Créer tb » en génère un).'
+      : 'Aucun fichier d\'ondes dans build/. Lance une simulation dont le testbench contient $dumpfile / $dumpvars.');
     return;
   }
   vcds.sort((a, b) => b.t - a.t);

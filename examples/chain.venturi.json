@@ -8,7 +8,7 @@
    "mod": "",
    "kind": "in",
    "x": 20,
-   "y": 168,
+   "y": 140,
    "color": "",
    "ports": [
     {
@@ -56,13 +56,14 @@
      "role": "",
      "side": ""
     }
-   ]
+   ],
+   "compact": true
   },
   {
    "inst": "r2",
    "mod": "reg8",
    "kind": "register",
-   "x": 440,
+   "x": 300,
    "y": 120,
    "color": "",
    "ports": [
@@ -94,14 +95,15 @@
      "role": "",
      "side": ""
     }
-   ]
+   ],
+   "compact": true
   },
   {
    "inst": "dout",
    "mod": "",
    "kind": "out",
-   "x": 620,
-   "y": 168,
+   "x": 440,
+   "y": 140,
    "color": "",
    "ports": [
     {

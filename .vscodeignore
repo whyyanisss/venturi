@@ -8,4 +8,7 @@ SECURITY.md
 .gitattributes
 .editorconfig
 **/*.vsix
+package-lock.json
+node_modules/**
+*-source.zip
 **/*.bak

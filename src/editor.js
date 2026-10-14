@@ -1,5 +1,6 @@
 'use strict';
 const vscode = require('vscode');
+const { buildHtml } = require('./html');
 const path = require('path');
 const crypto = require('crypto');
 
@@ -41,6 +42,11 @@ class VenturiEditorProvider {
         case 'cmd':
           await this.hooks.run(msg.cmd, document.uri, msg);
           break;
+        case 'status': {
+          const st = await this.hooks.status(document.uri);
+          panel.webview.postMessage({ type: 'status', ...(st || { dir: '', rows: [] }) });
+          break;
+        }
         case 'invalid':
           vscode.window.showErrorMessage('Venturi : JSON invalide, le schéma est verrouillé pour ne rien écraser.', 'Ouvrir en texte')
             .then(c => c && vscode.commands.executeCommand('vscode.openWith', document.uri, 'default'));
@@ -71,42 +77,10 @@ class VenturiEditorProvider {
 
   html(webview, media) {
     const nonce = crypto.randomBytes(16).toString('hex');
-    const uri = f => webview.asWebviewUri(vscode.Uri.joinPath(media, f));
-    return `<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="${uri('editor.css')}">
-</head>
-<body>
-<div id="stage">
-  <div id="cvw"><svg id="cv"></svg></div>
-  <div id="tools" class="ov">
-    <button data-a="add:register">+ Registre</button>
-    <button data-a="add:adder">+ Adder</button>
-    <button data-a="add:mux">+ Mux</button>
-    <button data-a="add:custom">+ Custom</button>
-    <button data-a="add:in">+ Entrée</button>
-    <button data-a="add:out">+ Sortie</button>
-    <button id="nom" data-a="nom">Nomenclature : normale</button>
-    <span class="sep"></span>
-    <label class="inl">top <input id="top" data-a="top" value="chain"></label>
-    <label class="inl">reset <select id="rp" data-a="rst"><option value="low">actif bas</option><option value="high">actif haut</option></select></label>
-    <span class="sep"></span>
-    <button data-a="cmd:generate" title="Écrit rtl/*.v">Générer .v</button>
-    <button data-a="cmd:compile" title="iverilog">Compiler</button>
-    <button class="p" data-a="cmd:simulate" title="iverilog + vvp">▶ Simuler</button>
-    <button data-a="cmd:openTop" title="Ouvre le module top à côté">top.v</button>
-    <button data-a="svg">.svg</button>
-  </div>
-  <div id="props" class="ov" hidden></div>
-  <div id="hint" class="ov">Glisse un bloc pour le déplacer · tire d'un port à un autre pour câbler · double-clic sur un bloc : ouvre son .v · Suppr efface · Ctrl+C/V copie</div>
-</div>
-<script nonce="${nonce}" src="${uri('editor.js')}"></script>
-</body>
-</html>`;
+    return buildHtml({
+      nonce, cspSource: webview.cspSource, version: require('../package.json').version,
+      uri: f => webview.asWebviewUri(vscode.Uri.joinPath(media, f))
+    });
   }
 }
 

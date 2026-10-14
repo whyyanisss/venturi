@@ -2,7 +2,7 @@
   "name": "venturi",
   "displayName": "venturi",
   "description": "Éditeur de schémas blocs qui génère du Verilog, avec compilation, simulation Icarus Verilog et GTKWave intégrés.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "local",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -90,6 +90,12 @@
         "icon": "$(play)"
       },
       {
+        "command": "venturi.simulateWave",
+        "category": "Venturi",
+        "title": "Simuler et ouvrir GTKWave",
+        "icon": "$(pulse)"
+      },
+      {
         "command": "venturi.wave",
         "category": "Venturi",
         "title": "Ouvrir les ondes (GTKWave)",
@@ -159,7 +165,8 @@
         "venturi.generateOnSave": {
           "type": "boolean",
           "default": true,
-          "description": "Régénère le Verilog quand le schéma est sauvegardé."
+          "description": "Régénère le Verilog quand le schéma est sauvegardé.",
+          "deprecationMessage": "Remplacé par venturi.generateOn."
         },
         "venturi.compileOnSave": {
           "type": "boolean",
@@ -213,8 +220,44 @@
           "default": "gtkwave",
           "description": "Commande gtkwave.",
           "scope": "machine"
+        },
+        "venturi.gtkwave.openAfterSimulate": {
+          "type": "boolean",
+          "default": false,
+          "description": "Ouvre GTKWave automatiquement à la fin de chaque simulation réussie (sinon : bouton « Simuler + GTKWave » ou « Ouvrir GTKWave »)."
+        },
+        "venturi.confirmOverwrite": {
+          "type": "string",
+          "enum": [
+            "modified",
+            "always"
+          ],
+          "default": "modified",
+          "enumDescriptions": [
+            "Demander confirmation (fenêtre modale) seulement avant d'écraser un fichier modifié à la main.",
+            "Demander confirmation avant d'écraser n'importe quel fichier Verilog existant, même non modifié."
+          ],
+          "description": "Quand demander confirmation avant que Venturi réécrive un .v existant. Dans tous les cas, ta version est sauvegardée dans un .bak horodaté."
+        },
+        "venturi.generateOn": {
+          "type": "string",
+          "enum": [
+            "save",
+            "change",
+            "manual"
+          ],
+          "default": "save",
+          "enumDescriptions": [
+            "Génère le Verilog quand tu enregistres le schéma.",
+            "Génère le Verilog à chaque modification du schéma (avec un court délai), sans enregistrer. Jamais de fenêtre de confirmation : les fichiers modifiés à la main sont conservés et signalés.",
+            "Ne génère que sur demande (menu Fichiers ▸ Générer .v)."
+          ],
+          "description": "Quand générer le Verilog. Remplace venturi.generateOnSave."
         }
       }
     }
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
   }
 }
